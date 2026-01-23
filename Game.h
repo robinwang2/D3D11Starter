@@ -23,6 +23,7 @@ private:
 	void LoadShaders();
 	void CreateGeometry();
 
+	void BeginImGuiFrame(float deltaTime);
 	// Note the usage of ComPtr below
 	//  - This is a smart pointer for objects that abide by the
 	//     Component Object Model, which DirectX objects do
