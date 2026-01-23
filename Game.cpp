@@ -23,6 +23,11 @@ using namespace DirectX;
 // are initialized but before the game loop begins
 // --------------------------------------------------------
 Game::Game()
+	: backgroundColor{ 0.4f, 0.6f, 0.75f, 1.0f },
+	  showDemoWindow(true),
+	  testSliderValue(0.5f),
+	  testCounter(0),
+	  testText{}
 {
 	// Initialize ImGui itself & platform/renderer backends
 	IMGUI_CHECKVERSION();
@@ -261,8 +266,66 @@ void Game::BeginImGuiFrame(float deltaTime)
 	Input::SetKeyboardCapture(io.WantCaptureKeyboard);
 	Input::SetMouseCapture(io.WantCaptureMouse);
 
-	// Show the demo window
-	ImGui::ShowDemoWindow();
+	// Show the demo window if enabled
+	if (showDemoWindow)
+	{
+		ImGui::ShowDemoWindow();
+	}
+}
+
+// --------------------------------------------------------
+// Builds the custom ImGui UI
+// --------------------------------------------------------
+void Game::BuildUI()
+{
+	// Create a custom window
+	ImGui::Begin("Game Settings");
+
+	// Display framerate
+	ImGui::Text("Framerate: %.1f FPS", ImGui::GetIO().Framerate);
+
+	// Display window dimensions
+	ImGui::Text("Window Size: %d x %d", Window::Width(), Window::Height());
+
+	// Background color picker
+	ImGui::ColorEdit4("Background Color", backgroundColor);
+
+	// Button to toggle demo window
+	if (ImGui::Button(showDemoWindow ? "Hide Demo Window" : "Show Demo Window"))
+	{
+		showDemoWindow = !showDemoWindow;
+	}
+
+	// Separator for visual organization
+	ImGui::Separator();
+	ImGui::Text("Additional Test Elements:");
+
+	// Test Element 1: Collapsing Header with content
+	if (ImGui::CollapsingHeader("Collapsing Headers"))
+	{
+		ImGui::Text("This is in a collapsing header!");
+		ImGui::BulletText("1");
+		ImGui::BulletText("2");
+	}
+
+	// Test Element 2: Text Input
+	ImGui::InputText("Text Input", testText, 256);
+
+	// Test Element 3: Slider
+	ImGui::SliderFloat("Test Slider", &testSliderValue, 0.0f, 1.0f);
+
+	// Test Element 4: Counter with buttons
+	ImGui::Text("Counter: %d", testCounter);
+	if (ImGui::Button("Increment"))
+		testCounter++;
+	ImGui::SameLine();
+	if (ImGui::Button("Decrement"))
+		testCounter--;
+	ImGui::SameLine();
+	if (ImGui::Button("Reset"))
+		testCounter = 0;
+
+	ImGui::End();
 }
 
 // --------------------------------------------------------
@@ -280,6 +343,12 @@ void Game::OnResize()
 // --------------------------------------------------------
 void Game::Update(float deltaTime, float totalTime)
 {
+	// BEGIN: ImGui new frame setup - MUST be first!
+	BeginImGuiFrame(deltaTime);
+
+	// Build the custom UI
+	BuildUI();
+
 	// Example input checking: Quit if the escape key is pressed
 	if (Input::KeyDown(VK_ESCAPE))
 		Window::Quit();
@@ -296,8 +365,8 @@ void Game::Draw(float deltaTime, float totalTime)
 	// - At the beginning of Game::Draw() before drawing *anything*
 	{
 		// Clear the back buffer (erase what's on screen) and depth buffer
-		const float color[4] = { 0.4f, 0.6f, 0.75f, 0.0f };
-		Graphics::Context->ClearRenderTargetView(Graphics::BackBufferRTV.Get(),	color);
+		// Use the backgroundColor member variable instead of local const
+		Graphics::Context->ClearRenderTargetView(Graphics::BackBufferRTV.Get(), backgroundColor);
 		Graphics::Context->ClearDepthStencilView(Graphics::DepthBufferDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 	}
 
@@ -331,7 +400,7 @@ void Game::Draw(float deltaTime, float totalTime)
 	// - These should happen exactly ONCE PER FRAME
 	// - At the very end of the frame (after drawing *everything*)
 	{
-		ImGui::Render(); // Turns this frame¡¯s UI into renderable triangles
+		ImGui::Render(); // Turns this frame's UI into renderable triangles
 		ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData()); // Draws it to the screen
 		// Present at the end of the frame
 		bool vsync = Graphics::VsyncState();

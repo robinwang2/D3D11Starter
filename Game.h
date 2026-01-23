@@ -37,5 +37,17 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> pixelShader;
 	Microsoft::WRL::ComPtr<ID3D11VertexShader> vertexShader;
 	Microsoft::WRL::ComPtr<ID3D11InputLayout> inputLayout;
+
+	// ImGui UI state variables
+	float backgroundColor[4];  // Background color (RGBA)
+	bool showDemoWindow;       // Toggle for demo window visibility
+	
+	// Test UI elements
+	float testSliderValue;     // Slider value
+	int testCounter;           // Counter value
+	char testText[256];        // Text input buffer
+
+	// Helper methods
+	void BuildUI();            // Builds custom ImGui interface
 };
 
