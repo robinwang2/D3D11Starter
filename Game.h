@@ -2,6 +2,9 @@
 
 #include <d3d11.h>
 #include <wrl/client.h>
+#include <DirectXMath.h>
+
+class Mesh; // Forward declaration
 
 class Game
 {
@@ -24,19 +27,21 @@ private:
 	void CreateGeometry();
 
 	void BeginImGuiFrame(float deltaTime);
-	// Note the usage of ComPtr below
-	//  - This is a smart pointer for objects that abide by the
-	//     Component Object Model, which DirectX objects do
-	//  - More info here: https://github.com/Microsoft/DirectXTK/wiki/ComPtr
-
-	// Buffers to hold actual geometry data
-	Microsoft::WRL::ComPtr<ID3D11Buffer> vertexBuffer;
-	Microsoft::WRL::ComPtr<ID3D11Buffer> indexBuffer;
 
 	// Shaders and shader-related constructs
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> pixelShader;
 	Microsoft::WRL::ComPtr<ID3D11VertexShader> vertexShader;
 	Microsoft::WRL::ComPtr<ID3D11InputLayout> inputLayout;
+
+	// Mesh objects
+	Mesh* triangleMesh;
+	Mesh* squareMesh;
+	Mesh* hexagonMesh;
+
+	// Mesh positions
+	DirectX::XMFLOAT3 trianglePosition;
+	DirectX::XMFLOAT3 squarePosition;
+	DirectX::XMFLOAT3 hexagonPosition;
 
 	// ImGui UI state variables
 	float backgroundColor[4];  // Background color (RGBA)
