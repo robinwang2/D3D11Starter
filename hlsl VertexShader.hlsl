@@ -1,11 +1,13 @@
-
-//cbuffer
+// Constant buffer for external data from C++ application
+// - Must match the VertexShaderExternalData struct in BufferStructs.h
+// - Register b0 means this is bound to slot 0
 cbuffer ExternalData : register(b0)
 {
-    float4 colorTint;
-    float3 offset;
-    float padding;
+	float4 colorTint;   // Color tint to multiply with vertex colors
+	float3 offset;      // Offset to apply to vertex positions
+	float padding;      // Padding for 16-byte alignment (not used in shader)
 }
+
 // Struct representing a single vertex worth of data
 // - This should match the vertex definition in our C++ code
 // - By "match", I mean the size, order and number of members
@@ -50,19 +52,23 @@ VertexToPixel main( VertexShaderInput input )
 	// Set up output struct
 	VertexToPixel output;
 
-	// Here we're essentially passing the input position directly through to the next
-	// stage (rasterizer), though it needs to be a 4-component vector now.  
+	// Apply the offset from the constant buffer to the vertex position
+	// - This shifts all vertices by the same amount
+	float3 offsetPosition = input.localPosition + offset;
+	
+	// Convert to float4 for output (homogeneous coordinates)
 	// - To be considered within the bounds of the screen, the X and Y components 
 	//   must be between -1 and 1.  
 	// - The Z component must be between 0 and 1.  
 	// - Each of these components is then automatically divided by the W component, 
 	//   which we're leaving at 1.0 for now (this is more useful when dealing with 
 	//   a perspective projection matrix, which we'll get to in the future).
-	output.screenPosition = float4(input.localPosition + offset, 1.0f);
+	output.screenPosition = float4(offsetPosition, 1.0f);
 
-	// Pass the color through 
-	// - The values will be interpolated per-pixel by the rasterizer
-	// - We don't need to alter it here, but we do need to send it to the pixel shader
+	// Apply the color tint from the constant buffer to the vertex color
+	// - Multiplying colors reduces their intensity (tints them)
+	// - For example, a colorTint of (1.0, 0.8, 0.8, 1.0) will slightly reduce 
+	//   blue and green, creating a reddish tint
 	output.color = input.color * colorTint;
 
 	// Whatever we return will make its way through the pipeline to the

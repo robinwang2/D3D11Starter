@@ -4,6 +4,8 @@
 #include <wrl/client.h>
 #include <DirectXMath.h>
 
+#include "BufferStructs.h"  // Add this include
+
 class Mesh; // Forward declaration
 
 class Game
@@ -32,6 +34,12 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> pixelShader;
 	Microsoft::WRL::ComPtr<ID3D11VertexShader> vertexShader;
 	Microsoft::WRL::ComPtr<ID3D11InputLayout> inputLayout;
+
+	// Constant buffer for vertex shader
+	Microsoft::WRL::ComPtr<ID3D11Buffer> vsConstantBuffer;
+	
+	// Data to send to vertex shader via constant buffer
+	VertexShaderExternalData vsData;
 
 	// Mesh objects
 	Mesh* triangleMesh;

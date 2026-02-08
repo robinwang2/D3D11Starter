@@ -5,7 +5,7 @@
 #include "PathHelpers.h"
 #include "Window.h"
 #include "Mesh.h"
-// Adjust as necessary for your own folder structure and project setup
+#include "BufferStructs.h"
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_impl_dx11.h"
 #include "ImGui/imgui_impl_win32.h"
@@ -36,6 +36,13 @@ Game::Game()
 	  squarePosition(-0.5f, -0.3f, 0.0f),   // Bottom left
 	  hexagonPosition(0.5f, -0.3f, 0.0f)    // Bottom right
 {
+	// Initialize vertex shader data
+	// Start with a slight red tint (reduces blue and green)
+	vsData.colorTint = XMFLOAT4(1.0f, 0.8f, 0.8f, 1.0f);
+	// Start with a small offset to the right
+	vsData.offset = XMFLOAT3(0.1f, 0.0f, 0.0f);
+	vsData.padding = 0.0f;  // Not used, just for alignment
+
 	// Initialize ImGui itself & platform/renderer backends
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -50,6 +57,19 @@ Game::Game()
 
 	LoadShaders();
 	CreateGeometry();
+
+	// Create constant buffer for vertex shader external data
+	{
+		D3D11_BUFFER_DESC cbDesc = {};
+		cbDesc.Usage = D3D11_USAGE_DYNAMIC;                    
+		cbDesc.ByteWidth = sizeof(VertexShaderExternalData);    
+		cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;          
+		cbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;        
+		cbDesc.MiscFlags = 0;
+		cbDesc.StructureByteStride = 0;
+
+		Graphics::Device->CreateBuffer(&cbDesc, nullptr, vsConstantBuffer.GetAddressOf());
+	}
 
 	// Set initial graphics API state
 	//  - These settings persist until we change them
@@ -71,6 +91,12 @@ Game::Game()
 		//    these calls will need to happen multiple times per frame
 		Graphics::Context->VSSetShader(vertexShader.Get(), 0, 0);
 		Graphics::Context->PSSetShader(pixelShader.Get(), 0, 0);
+
+		// Bind the constant buffer to the vertex shader at slot 0 (register b0)
+		Graphics::Context->VSSetConstantBuffers(
+			0,                                  
+			1,                                  
+			vsConstantBuffer.GetAddressOf());  
 	}
 }
 
@@ -283,6 +309,16 @@ void Game::BuildUI()
 
 	// Separator for visual organization
 	ImGui::Separator();
+	ImGui::Text("Shader Controls:");
+
+	// Color tint control using ColorEdit4 
+	ImGui::ColorEdit4("Color Tint", &vsData.colorTint.x);
+
+	// Offset control using DragFloat3 
+	ImGui::DragFloat3("Vertex Offset", &vsData.offset.x, 0.01f, -2.0f, 2.0f);
+
+	// Separator for visual organization
+	ImGui::Separator();
 	ImGui::Text("Mesh Information:");
 
 	// Display mesh information
@@ -368,6 +404,26 @@ void Game::Draw(float deltaTime, float totalTime)
 		// Use the backgroundColor member variable instead of local const
 		Graphics::Context->ClearRenderTargetView(Graphics::BackBufferRTV.Get(), backgroundColor);
 		Graphics::Context->ClearDepthStencilView(Graphics::DepthBufferDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
+	}
+
+	// Update constant buffer with fresh data before drawing
+	// Using Map/memcpy/Unmap pattern for dynamic buffers
+	{
+		D3D11_MAPPED_SUBRESOURCE mappedBuffer = {};
+		
+		// Map the buffer (lock it for writing)
+		Graphics::Context->Map(
+			vsConstantBuffer.Get(),     
+			0,                          
+			D3D11_MAP_WRITE_DISCARD,    
+			0,                          
+			&mappedBuffer);             
+
+		// Copy our data to the mapped buffer
+		memcpy(mappedBuffer.pData, &vsData, sizeof(VertexShaderExternalData));
+
+		// Unmap the buffer (unlock it so GPU can use it)
+		Graphics::Context->Unmap(vsConstantBuffer.Get(), 0);
 	}
 
 	// DRAW geometry
