@@ -4,6 +4,8 @@
 #include <wrl/client.h>
 #include <DirectXMath.h>
 
+#include "BufferStructs.h"
+
 class Mesh; // Forward declaration
 
 class Game
@@ -38,6 +40,10 @@ private:
 	Mesh* squareMesh;
 	Mesh* hexagonMesh;
 
+	// Constant buffer data + buffer
+	VertexShaderConstants vsConstantData;
+	Microsoft::WRL::ComPtr<ID3D11Buffer> vsConstantBuffer;
+
 	// Mesh positions
 	DirectX::XMFLOAT3 trianglePosition;
 	DirectX::XMFLOAT3 squarePosition;
@@ -55,4 +61,3 @@ private:
 	// Helper methods
 	void BuildUI();            // Builds custom ImGui interface
 };
-

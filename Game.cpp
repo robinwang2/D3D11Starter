@@ -11,6 +11,7 @@
 #include "ImGui/imgui_impl_win32.h"
 
 #include <DirectXMath.h>
+#include <cstring>
 
 // Needed for a helper function to load pre-compiled shader files
 #pragma comment(lib, "d3dcompiler.lib")
@@ -32,6 +33,11 @@ Game::Game()
 	  triangleMesh(nullptr),
 	  squareMesh(nullptr),
 	  hexagonMesh(nullptr),
+	  vsConstantData{
+		  DirectX::XMFLOAT4(1.0f, 0.85f, 0.85f, 1.0f),
+		  DirectX::XMFLOAT3(0.1f, 0.0f, 0.0f),
+		  0.0f
+	  },
 	  trianglePosition(0.0f, 1.0f, 0.0f),    // Top center
 	  squarePosition(-0.5f, -0.3f, 0.0f),   // Bottom left
 	  hexagonPosition(0.5f, -0.3f, 0.0f)    // Bottom right
@@ -50,6 +56,22 @@ Game::Game()
 
 	LoadShaders();
 	CreateGeometry();
+
+	// Create constant buffer for vertex shader data
+	{
+		D3D11_BUFFER_DESC bufferDesc = {};
+		bufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		bufferDesc.ByteWidth = sizeof(VertexShaderConstants);
+		bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+		bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+		D3D11_SUBRESOURCE_DATA initData = {};
+		initData.pSysMem = &vsConstantData;
+
+		Graphics::Device->CreateBuffer(&bufferDesc, &initData, vsConstantBuffer.GetAddressOf());
+
+		Graphics::Context->VSSetConstantBuffers(0, 1, vsConstantBuffer.GetAddressOf());
+	}
 
 	// Set initial graphics API state
 	//  - These settings persist until we change them
@@ -275,6 +297,10 @@ void Game::BuildUI()
 	// Background color picker
 	ImGui::ColorEdit4("Background Color", backgroundColor);
 
+	// Shader constant buffer controls
+	ImGui::ColorEdit4("Color Tint", &vsConstantData.colorTint.x);
+	ImGui::DragFloat3("Position Offset", &vsConstantData.positionOffset.x, 0.01f, -1.0f, 1.0f);
+
 	// Button to toggle demo window
 	if (ImGui::Button(showDemoWindow ? "Hide Demo Window" : "Show Demo Window"))
 	{
@@ -368,6 +394,16 @@ void Game::Draw(float deltaTime, float totalTime)
 		// Use the backgroundColor member variable instead of local const
 		Graphics::Context->ClearRenderTargetView(Graphics::BackBufferRTV.Get(), backgroundColor);
 		Graphics::Context->ClearDepthStencilView(Graphics::DepthBufferDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
+	}
+
+	// Update constant buffer data for the vertex shader
+	{
+		D3D11_MAPPED_SUBRESOURCE mapped = {};
+		Graphics::Context->Map(vsConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+		memcpy(mapped.pData, &vsConstantData, sizeof(VertexShaderConstants));
+		Graphics::Context->Unmap(vsConstantBuffer.Get(), 0);
+
+		Graphics::Context->VSSetConstantBuffers(0, 1, vsConstantBuffer.GetAddressOf());
 	}
 
 	// DRAW geometry
